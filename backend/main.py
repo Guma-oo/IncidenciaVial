@@ -1,10 +1,3 @@
-"""
-IncidenciaVial API — Sistema de Registro de Incidencias en la Vía Pública
-==========================================================================
-Versión     : 1.0.2 (Corregido - Multimedia)
-Arquitectura: FastAPI + MongoDB Atlas
-Patrones    : Singleton (conexión DB), Observer (notificaciones), Decorator (log)
-"""
 
 import os
 import random
@@ -22,10 +15,7 @@ from pydantic import BaseModel
 from pymongo import MongoClient
 from bson import ObjectId
 
-# ══════════════════════════════════════════════════════════════════
 # PATRÓN SINGLETON — Conexión única a MongoDB
-# ══════════════════════════════════════════════════════════════════
-
 class ConexionBaseDatos:
     _instancia = None
 
@@ -50,9 +40,7 @@ class ConexionBaseDatos:
 bd = ConexionBaseDatos()
 
 
-# ══════════════════════════════════════════════════════════════════
 # PATRÓN OBSERVER — Sistema de notificaciones
-# ══════════════════════════════════════════════════════════════════
 
 class ObservadorBase:
     def actualizar(self, evento: str, datos: dict):
@@ -88,10 +76,7 @@ notificador.suscribir(ObservadorBitacora())
 notificador.suscribir(ObservadorCorreo())
 
 
-# ══════════════════════════════════════════════════════════════════
 # PATRÓN DECORATOR — Logging de operaciones
-# ══════════════════════════════════════════════════════════════════
-
 def decorador_log(nombre_operacion: str):
     def envolvente(func):
         @functools.wraps(func)          
@@ -122,10 +107,7 @@ def decorador_log(nombre_operacion: str):
     return envolvente
 
 
-# ══════════════════════════════════════════════════════════════════
 # APLICACIÓN FastAPI
-# ══════════════════════════════════════════════════════════════════
-
 aplicacion = FastAPI(
     title="IncidenciaVial API",
     description="Sistema de registro de incidencias en la vía pública — Lima, Perú",
@@ -146,10 +128,6 @@ os.makedirs(CARPETA_MEDIOS, exist_ok=True)
 aplicacion.mount("/medios", StaticFiles(directory=CARPETA_MEDIOS), name="medios")
 
 
-# ══════════════════════════════════════════════════════════════════
-# HELPERS
-# ══════════════════════════════════════════════════════════════════
-
 def serializar(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
     return doc
@@ -161,11 +139,6 @@ def generar_codigo() -> str:
 CATEGORIAS_VALIDAS = {"bache", "alumbrado", "basura", "seguridad", "emergencia"}
 ESTADOS_VALIDOS    = {"pendiente", "en_proceso", "resuelto", "rechazado"}
 
-
-# ══════════════════════════════════════════════════════════════════
-# INICIALIZACIÓN
-# ══════════════════════════════════════════════════════════════════
-
 @decorador_log("inicializar_base_de_datos")
 def inicializar_bd():
     bd.verificar()
@@ -174,14 +147,9 @@ def inicializar_bd():
 
 try:
     inicializar_bd()
-    print("✅ Conectado a MongoDB Atlas y colecciones verificadas.")
+    print("Conectado a MongoDB Atlas y colecciones verificadas.")
 except Exception as e:
-    print(f"⚠️  Error de conexión: {e}")
-
-
-# ══════════════════════════════════════════════════════════════════
-# MODELOS PYDANTIC
-# ══════════════════════════════════════════════════════════════════
+    print(f"Error de conexión: {e}")
 
 class UbicacionModelo(BaseModel):
     latitud:  float
@@ -205,10 +173,7 @@ class ActualizarEstado(BaseModel):
     observacion: Optional[str] = ""
 
 
-# ══════════════════════════════════════════════════════════════════
 # ENDPOINTS
-# ══════════════════════════════════════════════════════════════════
-
 @aplicacion.get("/", tags=["Root"])
 def raiz():
     return {"mensaje": "IncidenciaVial API v1.0.2 — Sistema de reporte ciudadano"}
@@ -254,7 +219,6 @@ def registrar_incidencia(incidencia: IncidenciaCrear):
     }
 
 
-# ── UNIFICADO: Subir archivo multimedia (Imagen, Video, Audio) ──
 @aplicacion.post("/api/incidencias/{codigo}/subir-medio", tags=["Incidencias"])
 async def subir_medio(codigo: str, archivo: UploadFile = File(...)):
     """Sube un archivo multimedia y lo vincula a una incidencia existente."""
