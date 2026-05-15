@@ -1,1 +1,13 @@
 
+Requisitos Funcionales
+1.	RF-01: El sistema debe permitir el registro de una incidencia vial requiriendo obligatoriamente: categoría, descripción, dirección y datos básicos del ciudadano.
+2.	RF-02: El sistema debe generar automáticamente un código alfanumérico único de 6 caracteres con el prefijo "INC-" (ej. INC-A1B2C3) al registrar exitosamente un reporte.
+3.	RF-03: El sistema debe permitir a los usuarios adjuntar archivos multimedia (imágenes, videos o audios) asociándolos a una incidencia existente mediante su código.
+4.	RF-04: El sistema debe permitir la consulta del estado y detalle completo de un reporte, incluyendo enlaces a sus evidencias adjuntas, utilizando el código único generado.
+5.	RF-05: El sistema debe proveer un panel (dashboard) que liste las incidencias y muestre estadísticas totales agrupadas por estado y categoría.
+Requisitos No Funcionales
+1.	RNF-01 (Tecnología): El backend debe estar desarrollado en Python utilizando el framework FastAPI para garantizar un procesamiento rápido y manejo asíncrono de peticiones.
+2.	RNF-02 (Persistencia): El sistema debe utilizar MongoDB Atlas como base de datos NoSQL, garantizando una conexión única mediante la implementación del patrón Singleton.
+3.	RNF-03 (Almacenamiento): Los archivos multimedia no deben almacenarse en la base de datos; deben guardarse físicamente en un directorio local del servidor (/medios), almacenando únicamente sus rutas relativas en MongoDB.
+4.	RNF-04 (Interoperabilidad): La API REST debe tener habilitado CORS (Cross-Origin Resource Sharing) para permitir el consumo desde clientes web en distintos dominios.
+5.	RNF-05 (Rendimiento): El guardado de logs operativos debe ejecutarse a través de un patrón Decorador para no interferir con la lógica de negocio ni degradar el tiempo de respuesta de los endpoints.
