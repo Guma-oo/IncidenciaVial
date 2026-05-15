@@ -1,6 +1,6 @@
 const API = 'http://127.0.0.1:8000/api';
 
-// Función para cambiar entre las 3 pantallas
+
 function ver(id) {
     document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
     document.getElementById(id).classList.add('activa');
