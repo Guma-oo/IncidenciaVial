@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>IncidenciaVial API</title>
+<style>
+  body { font-family: sans-serif; max-width: 500px; margin: 40px auto; padding: 20px; background: #f4f4f9; color: #333; }
+  nav { display: flex; gap: 10px; margin-bottom: 20px; }
+  button { padding: 10px 15px; cursor: pointer; background: #e85d26; color: white; border: none; border-radius: 4px; }
+  .vista { background: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 6px; display: none; }
+  .vista.activa { display: block; }
+  .campo { margin-bottom: 15px; }
+  label { display: block; font-weight: bold; font-size: 0.9em; margin-bottom: 5px; }
+  input, select, textarea { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+  .item { border-bottom: 1px solid #eee; padding: 10px 0; font-size: 0.9em; }
+  .media-link { display: inline-block; margin-top: 10px; color: #e85d26; text-decoration: none; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<nav>
+  <button onclick="ver('registro')">Reportar</button>
+  <button onclick="ver('consulta')">Consultar Estado</button>
+  <button onclick="ver('panel')">Ver Panel</button>
+</nav>
+
+<!-- VISTA: REGISTRO -->
+<div id="registro" class="vista activa">
+  <h2>Nuevo Reporte</h2>
+  <div class="campo"><label>Categoría</label>
+    <select id="cat">
+      <option value="bache">Bache</option>
+      <option value="alumbrado">Alumbrado</option>
+      <option value="basura">Basura</option>
+      <option value="seguridad">Seguridad</option>
+    </select>
+  </div>
+  <div class="campo"><label>Descripción</label><textarea id="desc"></textarea></div>
+  <div class="campo"><label>Dirección</label><input type="text" id="dir"></div>
+  <div class="campo"><label>Prioridad</label>
+    <select id="prio">
+      <option value="baja">Baja</option>
+      <option value="media" selected>Media</option>
+      <option value="alta">Alta</option>
+    </select>
+  </div>
+  <div class="campo"><label>Tus Nombres</label><input type="text" id="nom"></div>
+  <div class="campo"><label>Tu Correo</label><input type="email" id="correo"></div>
+  
+  <div class="campo">
+    <label>Adjuntar Evidencia (Imagen, Video o Audio)</label>
+    <input type="file" id="archivoEvidencia" accept="image/*,video/*,audio/*">
+  </div>
+
+  <button onclick="enviar()">Enviar Reporte</button>
+</div>
+
+<!-- VISTA: CONSULTA -->
+<div id="consulta" class="vista">
+  <h2>Consultar</h2>
+  <input type="text" id="codigo" placeholder="Ej. INC-XXXXXX" style="margin-bottom:10px;">
+  <button onclick="buscar()">Buscar</button>
+  <div id="res-consulta" style="margin-top:15px"></div>
+</div>
+
+<!-- VISTA: PANEL -->
+<div id="panel" class="vista">
+  <h2>Panel de Control</h2>
+  <p>Total registradas: <b id="tot">0</b></p>
+  <div id="lista"></div>
+</div>
+
+<script>
+    const API = 'http://127.0.0.1:8000/api';
+
+    // Función para cambiar entre las 3 pantallas
+    function ver(id) {
+        document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
+        document.getElementById(id).classList.add('activa');
+        if (id === 'panel') cargarPanel();
+    }
+
+    // Enviar datos al backend
+    async function enviar() {
+        const data = {
+            categoria: document.getElementById('cat').value,
+            descripcion: document.getElementById('desc').value || "Sin descripción",
+            direccion: document.getElementById('dir').value || "Sin dirección",
+            ubicacion: { latitud: -12.0464, longitud: -77.0428 },
+            prioridad: document.getElementById('prio').value,
+            ciudadano: {
+                nombres: document.getElementById('nom').value || "Anónimo",
+                correo: document.getElementById('correo').value || "correo@anonimo.com",
+                telefono: ""
+            }
+        };
+
+        const res = await fetch(`${API}/incidencias/registrar`, {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(data)
+        });
+        
+        if (res.ok) {
+            const r = await res.json();
+            const codigo = r.codigo_incidencia;
+
+            const inputArchivo = document.getElementById('archivoEvidencia');
+            if (inputArchivo.files.length > 0) {
+                const formData = new FormData();
+                formData.append("archivo", inputArchivo.files[0]);
+
+                await fetch(`${API}/incidencias/${codigo}/subir-medio`, {
+                    method: 'POST',
+                    body: formData 
+                });
+            }
+
+            alert(`¡Reporte enviado exitosamente!\nTu código es: ${codigo}`);
+            
+            document.getElementById('desc').value = '';
+            document.getElementById('dir').value = '';
+            inputArchivo.value = ''; 
+        } else {
+            alert("Error al enviar el reporte. Asegúrate de que el backend esté corriendo en el puerto 8000.");
+        }
+    }
+
+    // Consultar una incidencia por código
+    async function buscar() {
+        const cod = document.getElementById('codigo').value.trim();
+        const div = document.getElementById('res-consulta');
+        div.innerHTML = "Buscando...";
+        
+        const res = await fetch(`${API}/incidencias/${cod}`);
+        if (res.ok) {
+            const d = await res.json();
+            let htmlContent = `
+                <b>Código:</b> ${d.codigo_incidencia} <br> 
+                <b>Estado:</b> ${d.estado.toUpperCase()} <br> 
+                <b>Categoría:</b> ${d.categoria} <br> 
+                <b>Descripción:</b> ${d.descripcion} <br>
+            `;
+
+            if (d.medios && d.medios.length > 0) {
+                htmlContent += `<br><b>Evidencias Adjuntas:</b><br>`;
+                d.medios.forEach(medio => {
+                    htmlContent += `<a href="http://127.0.0.1:8000${medio.ruta}" target="_blank" class="media-link">📎 Ver ${medio.tipo}</a><br>`;
+                });
+            }
+
+            div.innerHTML = htmlContent;
+        } else {
+            div.innerHTML = "<span style='color:red;'>No encontrado.</span>";
+        }
+    }
+
+    // Cargar la lista del panel
+    async function cargarPanel() {
+        const lista = document.getElementById('lista');
+        lista.innerHTML = "Cargando...";
+        
+        const rEst = await fetch(`${API}/estadisticas`);
+        if (rEst.ok) document.getElementById('tot').innerText = (await rEst.json()).total;
+
+        const rInc = await fetch(`${API}/incidencias`);
+        if (rInc.ok) {
+            const data = await rInc.json();
+            lista.innerHTML = data.map(i => {
+                const mediaIcon = (i.medios && i.medios.length > 0) ? "📎 " : "";
+                return `
+                <div class="item">
+                    <b>${i.codigo_incidencia}</b> - <span style="color:#e85d26">${i.estado}</span><br>
+                    ${mediaIcon} ${i.categoria}: ${i.descripcion}
+                </div>
+                `;
+            }).join('');
+        } else {
+            lista.innerHTML = "Error al cargar los datos.";
+        }
+    }
+</script>
+</body>
+</html>
+<script src="app.js"></script>
